@@ -1,6 +1,6 @@
 # EzThread.hpp
 
-An Easy-to-Use Thread C++ Class Library
+An *Easy-to-Use* and *Header-Only* Thread C++ Class Library
 
 
 # DEMO
@@ -95,7 +95,26 @@ Copy the **EzThread.hpp** file in the same directory as the source files.
 
 Include the **EzThread.hpp** in your C++ source file and write a code. Please see [sample files](./example) for details.  
 
-### EzThread&lt;TYPE&gt;
+### Compile
+On compilation you may need some option switch. Examples are shown below.
+
+| Compiler          | Commandline              |
+| :----             | :----                    |
+|  GNU g++          | g++ *main.cpp* -pthread |
+|  Microsoft VC++   | cl /MT *main.cpp*        |
+|  Borland C++ 5.5  | bcc32 -WM *main.cpp*     |
+|  Embarcadero      | bcc32c -tCM *main.cpp*   |
+|  Digital Mars C++ | dmc *main.cpp* -D_MT=1   |
+|  Open Watcom      | wcl386 -bm *main.cpp*    |
+
+
+# Class Description
+There are three classes defined in this library.  
++ **EzThread&lt;**_TYPE_**&gt;**
++ [**EzThreadBase**](#ezthreadbase)
++ [**EzMutex**](#ezmutex)
+
+## EzThread&lt;TYPE&gt;
 *EzThread&lt;TYPE&gt;* enables any function to run on a thread.  
 *TYPE* must be the same as the argument type of the thread function.  
 --> See [example2.cpp](./example/example2.cpp) , [example3.cpp](./example/example3.cpp) , [example4.cpp](./example/example4.cpp)
@@ -109,7 +128,7 @@ Include the **EzThread.hpp** in your C++ source file and write a code. Please se
 | int **wait**() | Wait until the thread finishes. **wait**() is automatically called at the object deletion. Also user can call **wait**() anywhere to join the thread. <br> ret=0:success,  -1:error |
 | int **status**() | Get thread status <br> ret=0:unexecuted, 1:creating, 2:running, 4:finished, 8:joined |
 
-### EzThreadBase
+## EzThreadBase
 *EzThreadBase* is an abstract class which has thread management functions. You can flexibly implement your own thread class derived from it without thread management.  
 --> See [example1.cpp](./example/example1.cpp)
 
@@ -122,33 +141,37 @@ Include the **EzThread.hpp** in your C++ source file and write a code. Please se
 | HANDLE **get_win_thread_handle**() | (**Windows only**) A handle returned by _beginthredex() |
 | pthread_t **get_posix_thread_handle**() | (**POSIX only**) A handle returned by pthread_create() |
 
-### Compile
-On compilation you may need some option switch. Examples are shown below.
+## EzMutex
+*EzMutex* is a companion class which provides a mutual exclusion mechanism.
 
-| Compiler          | Commandline              |
-| :----             | :----                    |
-|  GNU g++          | g++ *main.cpp* -lpthread |
-|  Microsoft VC++   | cl /MT *main.cpp*        |
-|  Borland C++ 5.5  | bcc32 -WM *main.cpp*     |
-|  Embarcadero      | bcc32c -tCM *main.cpp*   |
-|  Digital Mars C++ | dmc *main.cpp* -D_MT=1   |
-|  Open Watcom      | wcl386 -bm *main.cpp*    |
+| Member | Description |
+| :---   | :---        |
+| void **lock**()  | Acquire a *mutex* of this instance. This method blocks (pauses) until the *mutex* can be acquired. |
+| bool **try_lock**() | Try to acquire a *mutex* of this instance. This method returns immediately regardless of whether the *mutex* can be acquired or not.<br>**true** is returned if the *mutex* was sucessfully acquired, otherwise **false** is returned. |
+| void **unlock**() | Release a *mutex* of this instance. |
+
+EzMutex also provides two sleep utilities.
+| Member | Description |
+| :---   | :---        |
+| EzMutex::**Wait**() | Yield the execution priority to other threads and sleep for a minimal period. |
+| EzMutex::**millisleep**(unsigned long *msec*) | Sleep for *msec* milliseconds.<br>**Note:** On Windows platforms, due to Windows timer limitations, the resolution of the sleep interval is typically about 16 ms. |
+
 
 
 # Note
 
-This library is *experimental* and *not guaranteed*.  
+This library is ***experimental*** and ***not guaranteed***.  
 If your compiler is **C++11** compliant, you should use **std::thread** instead.
 
 # Author
 
-* Kitanokitsune
+* [Kitanokitsune](https://github.com/kitanokitsune)  
 
 # License
 
 **EzThread.hpp** is under [MIT license](https://en.wikipedia.org/wiki/MIT_License).  
 ```text
-Copyright (c) 2022 Kintanokitsune
+Copyright (c) 2022, 2023 Kintanokitsune
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

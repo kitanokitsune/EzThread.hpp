@@ -1,5 +1,5 @@
-#ifndef __EZTHREAD_HPP__
-#define __EZTHREAD_HPP__
+#ifndef EZTHREAD_HPP__
+#define EZTHREAD_HPP__
 /*****************************************************************************
 EzThread: Easy Thread C++ Class Library
 
@@ -17,7 +17,7 @@ How to use the library:
 ------------------------------------------------------------------------------
 Command line switches for each C++ compiler:
 
-  GNU:          g++ main.cpp -lpthread
+  GNU:          g++ main.cpp -pthread
   Microsoft:    cl /MT main.cpp
   Borland:      bcc32 -WM main.cpp
   Embarcadero:  bcc32c -tCM main.cpp
@@ -27,7 +27,7 @@ Command line switches for each C++ compiler:
 ******************************************************************************
 EzThread.hpp is under MIT license
 ----------------------------------
-Copyright (c) 2022 Kintanokitsune
+Copyright (c) 2022 Kitanokitsune
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -49,6 +49,94 @@ SOFTWARE.
 ******************************************************************************/
 
 /* -------------------------------------------------------------------------- */
+
+/*****************************************************************************
+      CLASS DEFINITION : EzMutex
+ *****************************************************************************/
+#if defined(_WIN32)
+#   include <windows.h>  /* Sleep() */
+#else
+#   include <time.h>     /* nanosleep() */
+#endif
+
+#if defined(__BORLANDC__) && !defined(__CODEGEARC__)  /* bcc55 */
+#  define VOLATILE_
+#  define INLINE_
+#else
+#  define VOLATILE_ volatile
+#  define INLINE_ inline
+#endif
+
+
+class EzMutex {
+  private:
+    EzMutex(const EzMutex& obj);
+    EzMutex& operator=(const EzMutex& obj);
+
+    VOLATILE_ long m_token;
+
+  public:
+    EzMutex() { m_token = 0; };
+    ~EzMutex() {};
+
+#if defined(_WIN32)
+    INLINE_ void lock(void) {
+        while (InterlockedExchange(&m_token, 1)) Wait();
+    };
+
+    inline bool try_lock(void) {
+        if (InterlockedExchange(&m_token, 1)) return false;
+        return true;
+    };
+
+    inline void unlock(void) {
+        InterlockedExchange(&m_token, 0);
+    };
+#else
+    inline void lock(void) {
+        while (__sync_val_compare_and_swap(&m_token, 0, 1)) Wait();
+    };
+
+    inline bool try_lock(void) {
+        if (__sync_val_compare_and_swap(&m_token, 0, 1)) return false;
+        return true;
+    };
+
+    inline void unlock(void) {
+        __sync_val_compare_and_swap(&m_token, 1, 0);
+    };
+#endif
+
+#if defined(_WIN32)
+    static inline void Wait(void) {
+        ::Sleep(0);
+    }
+#else
+    static inline void Wait(void) {
+        struct timespec ts;
+        ts.tv_sec  = 0L;
+        ts.tv_nsec = 1000L /* 1000000L */ ;
+        nanosleep(&ts, NULL);
+    }
+#endif
+
+#ifdef _WIN32
+    static inline void millisleep(unsigned long x) {
+        Sleep((DWORD)x);
+    }
+#else
+    static inline void millisleep(unsigned long x) {
+        struct timespec ts;
+        if (x == 0L) x = 1L;
+        ts.tv_sec  = x / 1000L;
+        /* ts.tv_nsec = (x % 1000L) * 1000000L; */
+        ts.tv_nsec = (x - ts.tv_sec * 1000L) * 1000000L;
+        nanosleep(&ts, NULL);
+    }
+#endif
+
+};
+
 
 /*****************************************************************************
       MISC DEFINITION
@@ -94,14 +182,14 @@ SOFTWARE.
 /* -------------------------------------------------------------------------- */
 
 #ifndef __cplusplus
-#   define __DO_NOT_OVERRIDE__
-#   define __OVERRIDE_IS_PROHIBITED__
+#   define DO_NOT_OVERRIDE__
+#   define OVERRIDE_IS_PROHIBITED__
 #elif __cplusplus >= 201103L                /* c++11 is supported     */
-#   define __DO_NOT_OVERRIDE__ virtual
-#   define __OVERRIDE_IS_PROHIBITED__ final
+#   define DO_NOT_OVERRIDE__ virtual
+#   define OVERRIDE_IS_PROHIBITED__ final
 #else                                       /* c++11 is not supported */
-#   define __DO_NOT_OVERRIDE__
-#   define __OVERRIDE_IS_PROHIBITED__
+#   define DO_NOT_OVERRIDE__
+#   define OVERRIDE_IS_PROHIBITED__
 #endif
 
 /* --------------------------- thread status -------------------------------- */
@@ -131,28 +219,37 @@ class EzThreadBase
     volatile int m_ThreadState_;     /* 0:unexecuted, 1:creating, 2:running, 4:finished, 8:joined */
     volatile int m_IsThreadCreated_; /* 0:joined or not created, -1:created   */
 
+    EzMutex      mtx_thread_state;   /* mutex for m_ThreadState_              */
+
 /* -------------------------------------------------------------------------- */
-/*   FUNCTION :  __ThreadFuncWrapper()                                        */
-/*       __ThreadFuncWrapper() is a static member function                    */
+/*   FUNCTION :  setThreadState()                                             */
+/*       This function is used to set a member variable "m_ThreadState_"      */
+/*       with mutex guard for thread-safe.                                    */
+/* -------------------------------------------------------------------------- */
+    void setThreadState(int state) {
+        mtx_thread_state.lock();
+        m_ThreadState_ = state;
+        mtx_thread_state.unlock();
+    };
+
+/* -------------------------------------------------------------------------- */
+/*   FUNCTION :  m_ThreadFuncWrapper()                                        */
+/*       m_ThreadFuncWrapper() is a static member function                    */
 /*       which invokes app() method in a thread.                              */
 /* -------------------------------------------------------------------------- */
 
 #ifdef USE_WIN_THREAD
-    static unsigned __stdcall __ThreadFuncWrapper(void* arg) {
-        static_cast<EzThreadBase *>(arg)->m_ThreadState_ = EZTH_RUNNING;
-        EZ_MEM_BARRIER();
+    static unsigned __stdcall m_ThreadFuncWrapper(void* arg) {
+        static_cast<EzThreadBase *>(arg)->setThreadState(EZTH_RUNNING);
         static_cast<EzThreadBase *>(arg)->app();
-        EZ_MEM_BARRIER();
-        static_cast<EzThreadBase *>(arg)->m_ThreadState_ = EZTH_FINISHED;
+        static_cast<EzThreadBase *>(arg)->setThreadState(EZTH_FINISHED);
         return 0;
     };
 #else
-    static void* __ThreadFuncWrapper(void *arg) {
-        static_cast<EzThreadBase *>(arg)->m_ThreadState_ = EZTH_RUNNING;
-        EZ_MEM_BARRIER();
+    static void* m_ThreadFuncWrapper(void *arg) {
+        static_cast<EzThreadBase *>(arg)->setThreadState(EZTH_RUNNING);
         static_cast<EzThreadBase *>(arg)->app();
-        EZ_MEM_BARRIER();
-        static_cast<EzThreadBase *>(arg)->m_ThreadState_ = EZTH_FINISHED;
+        static_cast<EzThreadBase *>(arg)->setThreadState(EZTH_FINISHED);
         return NULL;
     };
 #endif
@@ -173,6 +270,7 @@ class EzThreadBase
 
     EzThreadBase() {
         m_IsThreadCreated_ = m_ThreadState_ = 0;
+        mtx_thread_state.unlock();
 #ifdef USE_WIN_THREAD
         m_ThreadHandle_ = NULL;
         // m_ThreadId_ = 0;
@@ -227,16 +325,22 @@ class EzThreadBase
 /*      0:unexecuted, 1:creating, 2:created and running, 4:finished, 8:joined */
 /* -------------------------------------------------------------------------- */
 
-    int status() const { return m_ThreadState_; }
+    int status() {
+        int ret;
+        mtx_thread_state.lock();
+        ret = m_ThreadState_;
+        mtx_thread_state.unlock();
+        return ret;
+    }
 
 /* -------------------------------------------------------------------------- */
 /*   FUNCTION: run                                                            */
 /*      This function creates and starts a thread.                            */
-/*      > Invokes app() method on a thread via __ThreadFuncWrapper()          */
+/*      > Invokes app() method on a thread via m_ThreadFuncWrapper()          */
 /*      Return value :  0:success  -1:error                                   */
 /* -------------------------------------------------------------------------- */
 
-    __DO_NOT_OVERRIDE__  int run()  __OVERRIDE_IS_PROHIBITED__
+    DO_NOT_OVERRIDE__  int run()  OVERRIDE_IS_PROHIBITED__
     {
         if(!m_IsThreadCreated_) {
             m_ThreadState_ = EZTH_CREATING;
@@ -244,7 +348,7 @@ class EzThreadBase
 #ifdef USE_WIN_THREAD
             unsigned dummy;  /* Digital Mars requires the 6th arg of _beginthreadex. */
                              /* Other compilers do not require it (allow NULL).      */
-            m_ThreadHandle_ = (HANDLE)_beginthreadex(NULL, 0, &__ThreadFuncWrapper,
+            m_ThreadHandle_ = (HANDLE)_beginthreadex(NULL, 0, &m_ThreadFuncWrapper,
                                                   this, 0, &dummy);
             if (m_ThreadHandle_ == (HANDLE)0L)    /* Fail */
             {
@@ -255,7 +359,7 @@ class EzThreadBase
             }
 #else
             if( pthread_create(&m_ThreadHandle_, NULL,
-                               &__ThreadFuncWrapper,
+                               &m_ThreadFuncWrapper,
                                this) /* !=0 */ )  /* Fail */
             {
                 m_ThreadHandle_ = pthread_self();
@@ -275,7 +379,7 @@ class EzThreadBase
 /*      Return value :  0:success  -1:error                                   */
 /* -------------------------------------------------------------------------- */
 
-    __DO_NOT_OVERRIDE__  int join()  __OVERRIDE_IS_PROHIBITED__
+    DO_NOT_OVERRIDE__  int join()  OVERRIDE_IS_PROHIBITED__
     {
         if(m_IsThreadCreated_) {
 #ifdef USE_WIN_THREAD
@@ -349,4 +453,4 @@ class EzThread : private EzThreadBase
     virtual int wait() { return EzThreadBase::join(); };
 };
 
-#endif /* __EZTHREAD_HPP__ */
+#endif /* EZTHREAD_HPP__ */

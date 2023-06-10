@@ -18,7 +18,7 @@ void threadfunc1(VBOOL_t *pReady) /* the memory pointed by pReady is shared with
     time_t t = clock();
     while(*pReady == true) {
     /* do something... */
-        if (clock() > t+(CLOCKS_PER_SEC>>2)) {
+        if (clock() > t+(static_cast<time_t>(CLOCKS_PER_SEC)>>2)) {
             printf("|"); fflush(stdout);
             t=clock();
         }
@@ -37,7 +37,7 @@ void threadfunc2(VBOOL_t *pReady)
     time_t t = clock();
     while(*pReady == true) {
     /* do something... */
-        if (clock() > t+CLOCKS_PER_SEC) {
+        if (clock() > t+static_cast<time_t>(CLOCKS_PER_SEC)) {
             printf("-"); fflush(stdout);
             t=clock();
         }

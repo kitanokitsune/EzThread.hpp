@@ -9,9 +9,8 @@
 #include <stdio.h>
 #include <windows.h>
 
+#define printf       dmc_safe_printf
 #define rsc_token_t  LONG
-
-volatile rsc_token_t token_printf = 0;
 
 static inline int dmc_acquire(volatile rsc_token_t &rsc) {
     while (InterlockedExchange(&rsc, 1)) Sleep(0);
@@ -21,6 +20,8 @@ static inline int dmc_acquire(volatile rsc_token_t &rsc) {
 static inline void dmc_release(volatile rsc_token_t &rsc) {
     InterlockedExchange(&rsc, 0);
 }
+
+volatile rsc_token_t token_printf = 0;
 
 int dmc_safe_printf(const char * fmt, ...) {
     int n;
@@ -32,16 +33,5 @@ int dmc_safe_printf(const char * fmt, ...) {
     va_end(args);
     return n;
 }
-
-int dmc_safe_fflush(FILE *stream) {
-    int n;
-    dmc_acquire(token_printf);
-    n = fflush(stream);
-    dmc_release(token_printf);
-    return n;
-}
-
-#define printf       dmc_safe_printf
-#define fflush(x)    dmc_safe_fflush(x)
 
 #endif /* __DMC_SAFE_PRINTF_H__ */

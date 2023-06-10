@@ -3,8 +3,8 @@ Create threads as many as possible : CAUTION! This may freeze your computer!
 
 How to compile:
 
- GNU:           g++ example4.cpp -lpthread
- MinGW(pthread):g++ -static -static-libstdc++ -static-libgcc example4.cpp -lpthread
+ GNU:           g++ example4.cpp -pthread
+ MinGW(pthread):g++ -static -static-libstdc++ -static-libgcc example4.cpp -pthread
  MinGW:         g++ -static -static-libstdc++ -static-libgcc example4.cpp -DUSE_WIN_THREAD
  Microsoft:     cl /MT /EHsc example4.cpp
  Borland:       bcc32 -WM example4.cpp
@@ -18,7 +18,6 @@ How to compile:
 #include <stdio.h>      /* printf() */
 #include <vector>       /* std::vector */
 #include "../EzThread.hpp"
-#include "millisleep.h"
 
 #ifdef __DMC__
 #  include "dmc_safe_printf.h" /* patch for Digial Mars Compiler's printf() */
@@ -34,9 +33,9 @@ static volatile int go = 0;
 
 void thread_func(int n)
 {
-    while(!go) shortsleep();  /* Wait for a go signal */
+    while(!go) EzMutex::millisleep(10);  /* Wait for a go signal */
     for (int i=1 ; i<=10; i++) {
-        millisleep(500);
+        EzMutex::millisleep(500);
         printf("<< t%05d >> loop %d\n", n, i);
     }
     printf("<< t%05d >> exit\n", n);
@@ -69,6 +68,7 @@ int main(void)
     };
 
     fprintf(stderr,"***** n=%d ******\n", n);
+    EzMutex::millisleep(5000);
     go = 1;  /* Signal for all the threads to start to count up */
 
     /* Delete all the instances */

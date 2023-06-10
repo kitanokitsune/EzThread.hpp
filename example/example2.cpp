@@ -8,7 +8,6 @@
  *****************************************************************************/
 
 #include <stdio.h>      /* printf() */
-#include "millisleep.h" /* millisleep() */
 #include "../EzThread.hpp"
 
 #ifdef __DMC__
@@ -22,7 +21,7 @@
 void thread_func(int n)  /* n is a local variable (call by value) */
 {
     for (int i=1 ; i<=3; i++) {
-        millisleep(1000);
+        EzMutex::millisleep(1000);
         printf("<< t%d >> loop %d\n", n, i);
     }
     printf("<< t%d >> exit\n", n);
@@ -36,7 +35,7 @@ int main()
 
     /* Start a thread with an interval after instantiation */
     EzThread<int> *t2 = new EzThread<int>;   /* instantiate an empty EzThread instance */
-    millisleep(1000);              /* 1 sec interval */
+    EzMutex::millisleep(1000);              /* 1 sec interval */
     t2->run(&thread_func, 2);     /* start a thread */
 
     /* (optional) Wait until a thread finishes. */

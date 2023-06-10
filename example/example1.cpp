@@ -15,8 +15,8 @@ This sample demnstrates how to use the library:
 
 How to compile:
 
- GNU:           g++ example1.cpp -lpthread
- MinGW(pthread):g++ -static -static-libstdc++ -static-libgcc example1.cpp -lpthread
+ GNU:           g++ example1.cpp -pthread
+ MinGW(pthread):g++ -static -static-libstdc++ -static-libgcc example1.cpp -pthread
  MinGW:         g++ -static -static-libstdc++ -static-libgcc example1.cpp -DUSE_WIN_THREAD
  Microsoft:     cl /MT example1.cpp
  Borland:       bcc32 -WM example1.cpp
@@ -29,7 +29,6 @@ How to compile:
 /* ------------------------------------------------------------------------- */
 
 #include <stdio.h>         /* printf() */
-#include "millisleep.h"    /* millisleep() */
 
 #ifdef __DMC__
 #  include "dmc_safe_printf.h" /* patch for Digial Mars Compiler's printf() */
@@ -74,7 +73,7 @@ void MyClass::app()
 {
 /* --- Write a code you want to execute on a thread. --- */
     for(int i = 1 ; i <= m_Input2 ; i++) {
-        millisleep(2500);
+        EzMutex::millisleep(2500);
         printf("[Th%d] loop %d\n", m_Input1, i);
     }
 
@@ -96,8 +95,8 @@ int main()
     EzThreadBase *pTh3 = new MyClass(3, 4);    // instantiate (dynamic allocation)
 
                          Th1.run();     // start the thread #1
-    millisleep(500);     Th2.run();     // start the thread #2 after 500msec
-    millisleep(500);     pTh3->run();   // start the thread #3 after another 500msec
+    EzMutex::millisleep(500);     Th2.run();     // start the thread #2 after 500msec
+    EzMutex::millisleep(500);     pTh3->run();   // start the thread #3 after another 500msec
 
     // Note that there is a time lag between run() call and thread creation.
     // If you like to know that a thread has been started or not, check the member
