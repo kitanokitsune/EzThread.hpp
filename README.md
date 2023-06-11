@@ -171,7 +171,7 @@ If your compiler is **C++11** compliant, you should use **std::thread** instead.
 
 **EzThread.hpp** is under [MIT license](https://en.wikipedia.org/wiki/MIT_License).  
 ```text
-Copyright (c) 2022, 2023 Kintanokitsune
+Copyright (c) 2022, 2023 Kitanokitsune
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
